@@ -20,7 +20,6 @@
 int connection = 0;
 
 typedef struct TCP_CLIENT_T {
-    struct tcp_pcb *server_pcb;
     struct tcp_pcb *client_pcb;
     uint8_t buffer_recv[BUF_SIZE];
     int recv_len;
@@ -70,6 +69,7 @@ err_t tcp_server_client_close(struct TCP_CLIENT_T* state){
         tcp_abort(state->client_pcb);
         err = ERR_ABRT;
     }
+    printf("Closed connection to %d\n",state->con_num);
     return err;
 }
 
@@ -102,9 +102,9 @@ err_t tcp_server_recv(void *arg, struct tcp_pcb *tpcb, struct pbuf *p, err_t err
     }
 
     static char* str = "HTTP/1.1 200 OK\nContent-Length: 12\nContent-Type: text/plain; charset=utf-8\n\nHello World!";
-    tcp_server_send_data(arg, state->client_pcb, str, strlen(str));
+    err = tcp_server_send_data(arg, state->client_pcb, str, strlen(str));
 
-    return ERR_OK;
+    return err;
 }
 
 static err_t tcp_server_poll(void *arg, struct tcp_pcb *tpcb) {
@@ -116,12 +116,11 @@ static err_t tcp_server_poll(void *arg, struct tcp_pcb *tpcb) {
 static void tcp_server_err(void *arg, err_t err) {
     if (err != ERR_ABRT) {
         printf("tcp_client_err_fn %d\n", err);
-        //handle it
+        //handle it TODO
     }
 }
 
-static err_t tcp_server_accept(void *arg, struct tcp_pcb *client_pcb, err_t err) {  //This is the only function that has a tcp_pcb callback
-    struct tcp_pcb *server_pcb = (struct tcp_pcb*)arg;
+static err_t tcp_server_accept(void *arg, struct tcp_pcb *client_pcb, err_t err) {  //This is the only function that has a tcp_pcb callback arg
     if (err != ERR_OK || client_pcb == NULL) {
         printf("Failure in accept\n");
         //handle it
@@ -129,9 +128,9 @@ static err_t tcp_server_accept(void *arg, struct tcp_pcb *client_pcb, err_t err)
     }
     printf("Client connected\n");
 
+    //should we store them in a list? We get the callbacks anyway...
     TCP_CLIENT_T *state = calloc(1, sizeof(TCP_CLIENT_T));
 
-    state->server_pcb = server_pcb;
     state->con_num = ++connection;
     state->client_pcb = client_pcb;
     tcp_arg(client_pcb, state);
@@ -192,7 +191,7 @@ int main() {
         printf("Connected.\n");
     }
 
-    volatile struct tcp_pcb *server_pcb = tcp_server_open();
+    struct tcp_pcb *server_pcb = tcp_server_open();
     while(1){
         sleep_ms(1000);
     }
