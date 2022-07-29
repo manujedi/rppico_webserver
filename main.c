@@ -34,7 +34,6 @@ static err_t tcp_server_close(struct tcp_pcb* server_pcb) {
     return ERR_OK;
 }
 
-
 static err_t tcp_server_sent(void *arg, struct tcp_pcb *tpcb, u16_t len) {
     printf("tcp_server_sent %u\n", len);
     return ERR_OK;
@@ -83,6 +82,7 @@ err_t tcp_server_recv(void *arg, struct tcp_pcb *tpcb, struct pbuf *p, err_t err
         free(state);
         return ERR_OK;
     }
+
     printf("Recieving from %i\n", state->con_num);
     // this method is callback from lwIP, so cyw43_arch_lwip_begin is not required, however you
     // can use this method to cause an assertion in debug mode, if this method is called when
@@ -97,10 +97,12 @@ err_t tcp_server_recv(void *arg, struct tcp_pcb *tpcb, struct pbuf *p, err_t err
     }
     pbuf_free(p);
 
+    //print it (can we recieve 0x00? if not we can use printf)
     for (int i = 0; i < p->tot_len; ++i) {
         printf("%c",state->buffer_recv[i]);
     }
 
+    //simply respond with hello world http string
     static char* str = "HTTP/1.1 200 OK\nContent-Length: 12\nContent-Type: text/plain; charset=utf-8\n\nHello World!";
     err = tcp_server_send_data(arg, state->client_pcb, str, strlen(str));
 
@@ -171,7 +173,6 @@ static struct tcp_pcb* tcp_server_open() {
 
     return server_pcb;
 }
-
 
 int main() {
     stdio_init_all();
