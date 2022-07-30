@@ -13,6 +13,8 @@
 #include "lwip/pbuf.h"
 #include "lwip/tcp.h"
 
+#include "files.h"
+
 #define TCP_PORT 4242
 #define BUF_SIZE 2048
 #define POLL_TIME_S 5
@@ -102,9 +104,13 @@ err_t tcp_server_recv(void *arg, struct tcp_pcb *tpcb, struct pbuf *p, err_t err
         printf("%c",state->buffer_recv[i]);
     }
 
-    //simply respond with hello world http string
-    static char* str = "HTTP/1.1 200 OK\nContent-Length: 12\nContent-Type: text/plain; charset=utf-8\n\nHello World!";
-    err = tcp_server_send_data(arg, state->client_pcb, str, strlen(str));
+    //build header
+    sprintf(httpheader+(httpheader_LEN-7), "%05i",colorpicker_LEN); //write the content length
+    httpheader[httpheader_LEN-2] = 0xa;                           //remove the \0 string terminator
+    httpheader[httpheader_LEN-1] = 0xa;
+
+    tcp_server_send_data(arg, state->client_pcb, httpheader, httpheader_LEN);
+    tcp_server_send_data(arg, state->client_pcb, colorpicker, colorpicker_LEN);
 
     return err;
 }
