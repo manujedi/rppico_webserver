@@ -1,4 +1,3 @@
 # rppico_tcpserver
-A minimalistic TCP server which accepts muliple connections and is based on the pico-example tcp server
-
-On any connections it prints the recieved data to serial USB and sends back a minimalistic http string which will show in browsers as hello world
+A minimalistic TCP server which accepts muliple connections and serves (but can be used for anything) a simple website. It builds the http header.
+The Python script converts html files to char* arrays so it is simpler to store them on the pico
