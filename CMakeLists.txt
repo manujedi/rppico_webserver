@@ -23,6 +23,7 @@ add_compile_options(-Wall
 # all of your files
 add_executable(main
 		main.c
+		files.h
 )
 
 #so the sdk can find our lwipopts files
@@ -37,7 +38,7 @@ target_compile_definitions(main PRIVATE
 
 # Add pico_stdlib library which aggregates commonly used features
 target_link_libraries(main
-		pico_lwip_iperf	#comment me out
+		#pico_lwip_iperf	#comment me out
 		pico_cyw43_arch_lwip_threadsafe_background
 		pico_stdlib)
 
