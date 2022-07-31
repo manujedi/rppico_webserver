@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.13)
 
-#enable pico W
+#enable pico W (not sure which one is actually needed)
 set(BOARD=pico-w)
 set(PICO_BOARD pico_w)
 
@@ -23,7 +23,7 @@ add_compile_options(-Wall
 # all of your files
 add_executable(main
 		main.c
-		files.h
+		websites/websites.h
 )
 
 #so the sdk can find our lwipopts files
@@ -32,13 +32,13 @@ target_include_directories(main PRIVATE
 		)
 
 target_compile_definitions(main PRIVATE
-		WIFI_SSID=\"2\"
-		WIFI_PASSWORD=\"ABCDEFGH\"
+		WIFI_SSID=\"somessid\"
+		WIFI_PASSWORD=\"somepassword\"
 		)
 
 # Add pico_stdlib library which aggregates commonly used features
 target_link_libraries(main
-		#pico_lwip_iperf	#comment me out
+		#pico_lwip_iperf
 		pico_cyw43_arch_lwip_threadsafe_background
 		pico_stdlib)
 

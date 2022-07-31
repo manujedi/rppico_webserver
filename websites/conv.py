@@ -2,13 +2,13 @@
 
 import sys
 
-f = open("files.h", "w")
+f = open("websites.h", "w")
 
 f.write("#ifndef _FILES_H\n")
 f.write("#define _FILES_H\n\n")
 
 
-#--------------header------------------
+#--------------http header------------------
 pre_len = "HTTP/1.1 200 OK\nContent-Type: text/html; charset=utf-8\nContent-Length: 00000\n\n"
 arraystring = "char httpheader [] = {"
 file_len = 0

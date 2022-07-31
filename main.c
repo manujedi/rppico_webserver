@@ -13,7 +13,7 @@
 #include "lwip/pbuf.h"
 #include "lwip/tcp.h"
 
-#include "files.h"
+#include "websites/websites.h"
 
 #define TCP_PORT 4242
 #define BUF_SIZE 2048
@@ -85,7 +85,7 @@ err_t tcp_server_recv(void *arg, struct tcp_pcb *tpcb, struct pbuf *p, err_t err
         return ERR_OK;
     }
 
-    printf("Recieving from %i\n", state->con_num);
+    printf("Receiving from %i\n", state->con_num);
     // this method is callback from lwIP, so cyw43_arch_lwip_begin is not required, however you
     // can use this method to cause an assertion in debug mode, if this method is called when
     // cyw43_arch_lwip_begin IS needed
@@ -109,7 +109,10 @@ err_t tcp_server_recv(void *arg, struct tcp_pcb *tpcb, struct pbuf *p, err_t err
     httpheader[httpheader_LEN-2] = 0xa;                           //remove the \0 string terminator
     httpheader[httpheader_LEN-1] = 0xa;
 
+    //send header
     tcp_server_send_data(arg, state->client_pcb, httpheader, httpheader_LEN);
+
+    //send website
     tcp_server_send_data(arg, state->client_pcb, colorpicker, colorpicker_LEN);
 
     return err;
