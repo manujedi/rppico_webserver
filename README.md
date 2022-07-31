@@ -3,4 +3,4 @@
 * Pure C, no micropython
 * It builds a simple http header. 
 * A Python script converts html files to char* arrays, so it is simple to edit and store websites on the pico
-  ![Tux, the Linux mascot](screenshot.jpg)
+  ![Screenshot](screenshot.jpg)
