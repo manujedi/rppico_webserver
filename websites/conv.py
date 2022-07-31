@@ -1,6 +1,7 @@
 #!/usr/bin/python
 
 import sys
+import glob
 
 f = open("websites.h", "w")
 
@@ -24,7 +25,7 @@ f.write("#define httpheader_LEN " + str(file_len) + "\n")
 f.write(arraystring + "\n")
 
 
-for arg in sys.argv[1:]:
+for arg in glob.glob('*.html'):
     arraystring = "static char " + arg[:arg.index(".")] + "[] = {"
     file_len = 0
     with open(arg, 'rb') as rfile:

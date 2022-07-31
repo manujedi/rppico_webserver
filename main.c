@@ -74,6 +74,76 @@ err_t tcp_server_client_close(struct TCP_CLIENT_T* state){
     return err;
 }
 
+err_t http_serve_response(struct TCP_CLIENT_T* client){
+
+    //----------------- index ----------------------------------
+    if(memcmp("GET / HTTP", client->buffer_recv, 10) == 0) {
+
+        //build header
+        sprintf(httpheader + (httpheader_LEN - 7), "%05i", indexpage_LEN); //write the content length
+        httpheader[httpheader_LEN - 2] = 0xa;                           //remove the \0 string terminator
+        httpheader[httpheader_LEN - 1] = 0xa;
+
+        //send header
+        tcp_server_send_data(client, client->client_pcb, httpheader, httpheader_LEN);
+
+        //send website
+        tcp_server_send_data(client, client->client_pcb, indexpage, indexpage_LEN);
+        return ERR_OK;
+    }
+
+    //----------------- process color --------------------------
+    if(memcmp("GET /post?color=%", client->buffer_recv, 17) == 0) {
+        char color[10] = {0};
+        memcpy(color, client->buffer_recv + 17, 8); //copy 6 chars, has \0 automatically
+        printf("Color: %s\n", color);
+
+        //build header
+        sprintf(httpheader + (httpheader_LEN - 7), "%05i", colorok_LEN); //write the content length
+        httpheader[httpheader_LEN - 2] = 0xa;                           //remove the \0 string terminator
+        httpheader[httpheader_LEN - 1] = 0xa;
+
+        //send header
+        tcp_server_send_data(client, client->client_pcb, httpheader, httpheader_LEN);
+
+        //send website
+        tcp_server_send_data(client, client->client_pcb, colorok, colorok_LEN);
+        return ERR_OK;
+    }
+
+    //----------------- colorpicker --------------------------
+    if(memcmp("GET /colorpicker HTTP", client->buffer_recv, 21) == 0) {
+
+        //build header
+        sprintf(httpheader + (httpheader_LEN - 7), "%05i", colorpicker_LEN); //write the content length
+        httpheader[httpheader_LEN - 2] = 0xa;                           //remove the \0 string terminator
+        httpheader[httpheader_LEN - 1] = 0xa;
+
+        //send header
+        tcp_server_send_data(client, client->client_pcb, httpheader, httpheader_LEN);
+
+        //send website
+        tcp_server_send_data(client, client->client_pcb, colorpicker, colorpicker_LEN);
+        return ERR_OK;
+    }
+
+    //--------------- not found ------------------------------
+    //build header
+    sprintf(httpheader + (httpheader_LEN - 7), "%05i", notfound_LEN); //write the content length
+    httpheader[httpheader_LEN - 2] = 0xa;                           //remove the \0 string terminator
+    httpheader[httpheader_LEN - 1] = 0xa;
+
+    //send header
+    tcp_server_send_data(client, client->client_pcb, httpheader, httpheader_LEN);
+
+    //send website
+    tcp_server_send_data(client, client->client_pcb, notfound, notfound_LEN);
+    return ERR_OK;
+
+
+}
+
+
 err_t tcp_server_recv(void *arg, struct tcp_pcb *tpcb, struct pbuf *p, err_t err) {
     TCP_CLIENT_T *state = (TCP_CLIENT_T*)arg;
 
@@ -99,21 +169,13 @@ err_t tcp_server_recv(void *arg, struct tcp_pcb *tpcb, struct pbuf *p, err_t err
     }
     pbuf_free(p);
 
-    //print it (can we recieve 0x00? if not we can use printf)
+    //print it (can we receive 0x00? if not we can use printf)
     for (int i = 0; i < p->tot_len; ++i) {
         printf("%c",state->buffer_recv[i]);
     }
 
-    //build header
-    sprintf(httpheader+(httpheader_LEN-7), "%05i",colorpicker_LEN); //write the content length
-    httpheader[httpheader_LEN-2] = 0xa;                           //remove the \0 string terminator
-    httpheader[httpheader_LEN-1] = 0xa;
+    http_serve_response(state);
 
-    //send header
-    tcp_server_send_data(arg, state->client_pcb, httpheader, httpheader_LEN);
-
-    //send website
-    tcp_server_send_data(arg, state->client_pcb, colorpicker, colorpicker_LEN);
 
     return err;
 }
