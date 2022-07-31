@@ -3,7 +3,7 @@
 * Pure C, no micropython
 * It builds a simple http header. 
 * A Python script converts html files to char* arrays, so it is simple to edit and store websites on the pico
-  * Convert them with conv.py file1.html file2.html
+  * Convert them with conv.py (all html files in the working dir are converted)
   * binary data is stored in websites.h
 * currently no handling of the received data, only printed to the console
 ![Screenshot](screenshot.jpg)
