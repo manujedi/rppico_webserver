@@ -35,7 +35,9 @@ for arg in glob.glob('*.html'):
             arraystring += hex(c) + ", "
             file_len+=1
 
-        arraystring = arraystring[:-2]
+        arraystring += "0x0"    #add EOF
+        file_len+=1;
+
         arraystring += "};\n"
 
     f.write("#define " + arg[:arg.index(".")] + "_LEN " + str(file_len) + "\n")

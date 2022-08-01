@@ -6,6 +6,7 @@
 
 #include <string.h>
 #include <stdlib.h>
+#include <unistd.h>
 
 #include "pico/stdlib.h"
 #include "pico/cyw43_arch.h"
@@ -19,7 +20,8 @@
 #define BUF_SIZE 2048
 #define POLL_TIME_S 5
 
-int connection = 0;
+uint32_t connection = 0;
+uint16_t currently_connected = 0;
 
 typedef struct TCP_CLIENT_T {
     struct tcp_pcb *client_pcb;
@@ -33,6 +35,7 @@ static err_t tcp_server_close(struct tcp_pcb* server_pcb) {
         tcp_arg(server_pcb, NULL);
         tcp_close(server_pcb);
     }
+
     return ERR_OK;
 }
 
@@ -70,11 +73,15 @@ err_t tcp_server_client_close(struct TCP_CLIENT_T* state){
         tcp_abort(state->client_pcb);
         err = ERR_ABRT;
     }
-    printf("Closed connection to %d\n",state->con_num);
+
+    currently_connected--;
+    printf("Closed connection to %d, brk at %p\n",state->con_num, sbrk(0));
+
     return err;
 }
 
-err_t http_serve_response(struct TCP_CLIENT_T* client){
+err_t http_serve_response(struct TCP_CLIENT_T* client){     //do not call me, we need to be in an interrupt context
+
 
     //----------------- index ----------------------------------
     if(memcmp("GET / HTTP", client->buffer_recv, 10) == 0) {
@@ -94,9 +101,14 @@ err_t http_serve_response(struct TCP_CLIENT_T* client){
 
     //----------------- process color --------------------------
     if(memcmp("GET /post?color=%", client->buffer_recv, 17) == 0) {
-        char color[10] = {0};
-        memcpy(color, client->buffer_recv + 17, 8); //copy 6 chars, has \0 automatically
-        printf("Color: %s\n", color);
+        char color[7] = {0};
+        memcpy(color, client->buffer_recv + 19, 6); //copy 6 chars, has \0 automatically
+        printf("Color: #%s\n", color);
+        uint8_t red = (color[0] >= 'a' ? (color[0] - 87)*16 : (color[0] - 48)*16) + (color[1] >= 'a' ? (color[1] - 87) : (color[1] - 48));
+        uint8_t gre = (color[2] >= 'a' ? (color[2] - 87)*16 : (color[2] - 48)*16) + (color[3] >= 'a' ? (color[3] - 87) : (color[3] - 48));
+        uint8_t blu = (color[4] >= 'a' ? (color[4] - 87)*16 : (color[4] - 48)*16) + (color[5] >= 'a' ? (color[5] - 87) : (color[5] - 48));
+
+        printf("R: %x, G: %x, B: %x\n",red,gre,blu);
 
         //build header
         sprintf(httpheader + (httpheader_LEN - 7), "%05i", colorok_LEN); //write the content length
@@ -140,26 +152,26 @@ err_t http_serve_response(struct TCP_CLIENT_T* client){
     tcp_server_send_data(client, client->client_pcb, notfound, notfound_LEN);
     return ERR_OK;
 
-
 }
 
 
 err_t tcp_server_recv(void *arg, struct tcp_pcb *tpcb, struct pbuf *p, err_t err) {
+    //cyw43_arch_gpio_put(CYW43_WL_GPIO_LED_PIN, 1);
     TCP_CLIENT_T *state = (TCP_CLIENT_T*)arg;
+
+    // this method is callback from lwIP, so cyw43_arch_lwip_begin is not required, however you
+    // can use this method to cause an assertion in debug mode, if this method is called when
+    // cyw43_arch_lwip_begin IS needed
+    cyw43_arch_lwip_check();
 
     //this is the connection close
     if (!p) {
-        //handle it
         tcp_server_client_close(state);
         free(state);
         return ERR_OK;
     }
 
     printf("Receiving from %i\n", state->con_num);
-    // this method is callback from lwIP, so cyw43_arch_lwip_begin is not required, however you
-    // can use this method to cause an assertion in debug mode, if this method is called when
-    // cyw43_arch_lwip_begin IS needed
-    cyw43_arch_lwip_check();
     if (p->tot_len > 0) {
         printf("tcp_server_recv %d/%d err %d\n", p->tot_len, state->recv_len, err);
 
@@ -175,30 +187,33 @@ err_t tcp_server_recv(void *arg, struct tcp_pcb *tpcb, struct pbuf *p, err_t err
     }
 
     http_serve_response(state);
-
+    //cyw43_arch_gpio_put(CYW43_WL_GPIO_LED_PIN, 0);
 
     return err;
 }
 
 static err_t tcp_server_poll(void *arg, struct tcp_pcb *tpcb) {
-    TCP_CLIENT_T *state = (TCP_CLIENT_T*)arg;
-    printf("Client %i still connected\n", state->con_num);
+    //TCP_CLIENT_T *state = (TCP_CLIENT_T*)arg;
+    //printf("Client %i still connected\n", state->con_num);
     return ERR_OK;
 }
 
 static void tcp_server_err(void *arg, err_t err) {
+    TCP_CLIENT_T *state = (TCP_CLIENT_T*)arg;
     if (err != ERR_ABRT) {
         printf("tcp_client_err_fn %d\n", err);
         //handle it TODO
+        tcp_server_client_close(state);
     }
 }
 
 static err_t tcp_server_accept(void *arg, struct tcp_pcb *client_pcb, err_t err) {  //This is the only function that has a tcp_pcb callback arg
     if (err != ERR_OK || client_pcb == NULL) {
-        printf("Failure in accept\n");
+        printf("failure in accept\n");
         //handle it
         return ERR_VAL;
     }
+    currently_connected++;
     printf("Client connected\n");
 
     //should we store them in a list? We get the callbacks anyway...
@@ -230,7 +245,7 @@ static struct tcp_pcb* tcp_server_open() {
         return (struct tcp_pcb*) 0;
     }
 
-    struct tcp_pcb* server_pcb = tcp_listen_with_backlog(pcb, 10);   //backlog, how many connections which are not yet accepted
+    struct tcp_pcb* server_pcb = tcp_listen_with_backlog(pcb, 100);   //backlog, how many connections which are not yet accepted
     if (!server_pcb) {
         printf("failed to listen\n");
         if (pcb) {
@@ -265,7 +280,9 @@ int main() {
 
     struct tcp_pcb *server_pcb = tcp_server_open();
     while(1){
-        sleep_ms(1000);
+        printf("alive... %i connected\n", currently_connected);
+        sleep_ms(10000);
+
     }
     tcp_server_close(server_pcb);
 
